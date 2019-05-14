@@ -5,7 +5,7 @@ import { Subject } from 'rxjs/Subject';
 import { Observable } from 'rxjs/Observable';
 import { BehaviorSubject } from 'rxjs/BehaviorSubject';
 
-import { CognitoUserPool, CognitoUserAttribute, CognitoUser } from 'amazon-cognito-identity-js';
+import { CognitoUserPool, CognitoUserAttribute, CognitoUser, AuthenticationDetails, CognitoUserSession } from 'amazon-cognito-identity-js';
 
 import { User } from './user.model';
 
@@ -21,6 +21,7 @@ const userPool = new CognitoUserPool( POOL_DATA );
 @Injectable()
 export class AuthService {
   
+  // Exposes a bunch of subjects that can be subscribed to by the consumer.
   authIsLoading = new BehaviorSubject<boolean>(false);
   authDidFail = new BehaviorSubject<boolean>(false);
   authStatusChanged = new Subject<boolean>();
@@ -68,19 +69,69 @@ export class AuthService {
 
     return;
   }
+
+  /**
+   * Confirms user after registration.
+   * @param username 
+   * @param code 
+   */
   confirmUser(username: string, code: string) {
     this.authIsLoading.next(true);
+    
     const userData = {
       Username: username,
+      Pool: userPool
     };
+
+
+    const cognitoUser = new CognitoUser(userData);
+    cognitoUser.confirmRegistration(code, true, ( err, result) => {
+      if (err) {
+        this.authDidFail.next(true);
+        this.authIsLoading.next(true);
+        return;
+      }      
+      this.authDidFail.next(false);
+      this.authIsLoading.next(false);
+      this.router.navigate(['/']);
+    })
   }
   signIn(username: string, password: string): void {
+
     this.authIsLoading.next(true);
+    
     const authData = {
       Username: username,
       Password: password
     };
+    
+    const authDetails = new AuthenticationDetails(authData);
+    
+    const userData = {
+      Username : username,
+      Pool : userPool
+    }
+    
+    const cognitoUser = new CognitoUser(userData);
+    const that = this; // Need to save a reference to the existing scope for subjects.
+
+    // Authenticate takes two callbacks ...
+    cognitoUser.authenticateUser(authDetails, {
+      onSuccess : function ( result: CognitoUserSession) { 
+        // Result will contain the tokens for the user's session.
+        that.authStatusChanged.next(true);
+        that.authDidFail.next(false);
+        that.authIsLoading.next(false);
+        console.log(result);
+      },
+      onFailure : function (err) {
+        that.authDidFail.next(true);
+        that.authIsLoading.next(false);
+        console.log(err);
+      }
+    } );
     this.authStatusChanged.next(true);
+    
     return;
   }
   getAuthenticatedUser() {
