@@ -135,8 +135,12 @@ export class AuthService {
     return;
   }
   getAuthenticatedUser() {
+    // Returns null or undefined if no user.
+    return userPool.getCurrentUser();
   }
   logout() {
+    userPool.getCurrentUser().signOut();
+
     this.authStatusChanged.next(false);
   }
   isAuthenticated(): Observable<boolean> {
@@ -145,7 +149,21 @@ export class AuthService {
       if (!user) {
         observer.next(false);
       } else {
-        observer.next(false);
+        // Get the user's session to determine if they are authenticated.
+        user.getSession((err,session) => {
+          if(err) {
+            observer.next(false);
+          }
+          else {
+            if (session.isValid()) {              
+              // listeners to this subject can adjust UI knowing that the user has been proper;y authentciated.
+              observer.next(true); 
+            }
+            else {
+                observer.next(false);            
+            }
+          }
+        })        
       }
       observer.complete();
     });
