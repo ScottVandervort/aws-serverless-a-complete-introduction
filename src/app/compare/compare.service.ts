@@ -23,8 +23,17 @@ export class CompareService {
     this.dataIsLoading.next(true);
     this.dataEdited.next(false);
     this.userData = data;
-      this.http.post('https://API_ID.execute-api.REGION.amazonaws.com/dev/', data, {
-        headers: new Headers({'Authorization': 'XX'})
+
+    // Session exist?
+    this.authService.getAuthenticatedUser().getSession((err,session) => {
+      if (err) {
+        return;
+      }
+
+      // Yes. POST something to the API Gateway ...
+      // Use the Cognito token attached to the user's session.
+      this.http.post('https://b74xyba8f7.execute-api.us-east-2.amazonaws.com/dev/compare-yourself', data, {        
+        headers: new Headers({'Authorization': session.getIdToken().getJwtToken(), 'Content-Type': 'application/json'})
       })
         .subscribe(
           (result) => {
@@ -38,6 +47,7 @@ export class CompareService {
             this.dataEdited.next(false);
           }
         );
+    })
   }
   onRetrieveData(all = true) {
     this.dataLoaded.next(null);
