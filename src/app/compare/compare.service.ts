@@ -52,13 +52,20 @@ export class CompareService {
   onRetrieveData(all = true) {
     this.dataLoaded.next(null);
     this.dataLoadFailed.next(false);
-      let queryParam = '';
+
+    // Get the access token for the logged in user.
+    this.authService.getAuthenticatedUser().getSession((err, session) => {
+      
+      const queryParam = '?accessToken=' + session.getAccessToken().getJwtToken();
       let urlParam = 'all';
+      
       if (!all) {
         urlParam = 'single';
       }
-      this.http.get('https://API_ID.execute-api.REGION.amazonaws.com/dev/' + urlParam + queryParam, {
-        headers: new Headers({'Authorization': 'XXX'})
+      
+      // Call compare-yourself with the access token  ... in the query string AND the header???? What? Why both?
+      this.http.get('https://b74xyba8f7.execute-api.us-east-2.amazonaws.com/dev/compare-yourself/' + urlParam + queryParam, {
+        headers: new Headers({'Authorization': session.getAccessToken().getJwtToken(), 'Content-Type': 'application/json'})
       })
         .map(
           (response: Response) => response.json()
@@ -82,6 +89,8 @@ export class CompareService {
             this.dataLoaded.next(null);
           }
         );
+    });
+
   }
   onDeleteData() {
     this.dataLoadFailed.next(false);
